@@ -1,0 +1,188 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e227]:
+    - banner [ref=e228]:
+      - link "ShadowArena home" [ref=e229] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=e230]: ◒
+        - generic [ref=e231]: ShadowArena
+      - button "Connect wallet" [ref=e233] [cursor=pointer]
+    - main [ref=e234]:
+      - generic [ref=e235]:
+        - generic [ref=e236]:
+          - paragraph [ref=e237]: Private strategy / match 0047
+          - heading [level=1] [ref=e238]:
+            - text: Read the board.
+            - emphasis [ref=e239]: Keep the edge.
+          - paragraph [ref=e240]: Make a move your opponent cannot see. Midnight verifies the rules without exposing your hand, resources, or plan.
+        - generic [ref=e241]:
+          - generic [ref=e242]: Rehearsal mode
+          - generic [ref=e244]: ROUND 02
+      - generic [ref=e245]:
+        - generic [ref=e246]:
+          - generic [ref=e247]:
+            - generic [ref=e248]:
+              - paragraph [ref=e249]: Tactical field
+              - heading "Territories" [level=2] [ref=e250]
+            - generic [ref=e251]: You Opponent
+          - generic "Tactical territory board" [ref=e256]:
+            - button "A territory, yours" [ref=e257] [cursor=pointer]:
+              - generic [ref=e258]: A
+              - generic [ref=e259]: HOME
+            - button "B territory, unclaimed" [ref=e264] [cursor=pointer]:
+              - generic [ref=e265]: B
+            - button "C territory, unclaimed" [ref=e266] [cursor=pointer]:
+              - generic [ref=e267]: C
+            - button "D territory, unclaimed" [ref=e268] [cursor=pointer]:
+              - generic [ref=e269]: D
+            - button "E territory, unclaimed" [ref=e270] [cursor=pointer]:
+              - generic [ref=e271]: E
+            - button "F territory, unclaimed" [ref=e272] [cursor=pointer]:
+              - generic [ref=e273]: F
+            - button "G territory, unclaimed" [ref=e274] [cursor=pointer]:
+              - generic [ref=e275]: G
+            - button "H territory, unclaimed" [ref=e276] [cursor=pointer]:
+              - generic [ref=e277]: H
+            - button "I territory, unclaimed" [ref=e278] [cursor=pointer]:
+              - generic [ref=e279]: I
+            - button "J territory, unclaimed" [ref=e280] [cursor=pointer]:
+              - generic [ref=e281]: J
+            - button "K territory, unclaimed" [ref=e282] [cursor=pointer]:
+              - generic [ref=e283]: K
+            - button "L territory, unclaimed" [ref=e284] [cursor=pointer]:
+              - generic [ref=e285]: L
+            - button "M territory, unclaimed" [ref=e286] [cursor=pointer]:
+              - generic [ref=e287]: M
+            - button "N territory, unclaimed" [ref=e288] [cursor=pointer]:
+              - generic [ref=e289]: "N"
+            - button "O territory, opponent" [ref=e290] [cursor=pointer]:
+              - generic [ref=e291]: O
+              - generic [ref=e292]: BASE
+          - generic [ref=e297]:
+            - generic [ref=e298]: 1 territories held
+            - generic [ref=e299]: 3 × 5 GRID
+        - complementary [ref=e300]:
+          - generic [ref=e301]:
+            - generic [ref=e302]:
+              - generic [ref=e303]:
+                - paragraph [ref=e304]: Match status
+                - heading "Commit phase" [level=2] [ref=e408]
+              - generic [ref=e306]: "01"
+            - paragraph [ref=e307]: Round resolved. Choose your next private move.
+            - generic [ref=e311]:
+              - generic [ref=e312]: Commit
+              - generic [ref=e313]: Reveal
+              - generic [ref=e314]: Resolve
+          - generic [ref=e315]:
+            - generic [ref=e316]:
+              - generic [ref=e317]:
+                - paragraph [ref=e318]: Your hidden state
+                - heading "Private intel" [level=2] [ref=e319]
+              - generic [ref=e320]: ⌁ private
+            - generic [ref=e321]:
+              - generic [ref=e322]:
+                - generic [ref=e323]: Resources
+                - strong [ref=e324]: "90"
+                - text: credits
+              - generic [ref=e325]:
+                - generic [ref=e326]: Ready troops
+                - strong [ref=e327]: "2"
+                - text: units
+            - generic [ref=e328]:
+              - generic [ref=e329]: Your hand
+              - generic [ref=e330]: 3/3 ready
+            - generic [ref=e331]:
+              - button "4 Ambush" [ref=e332] [cursor=pointer]:
+                - generic [ref=e333]: "4"
+                - generic [ref=e334]: Ambush
+              - button "2 Shield" [ref=e335] [cursor=pointer]:
+                - generic [ref=e336]: "2"
+                - generic [ref=e337]: Shield
+              - button "5 Spy" [ref=e338] [cursor=pointer]:
+                - generic [ref=e339]: "5"
+                - generic [ref=e340]: Spy
+      - generic [ref=e341]:
+        - generic [ref=e342]:
+          - generic [ref=e343]:
+            - generic [ref=e344]:
+              - paragraph [ref=e345]: Your move
+              - heading "Write the next chapter" [level=2] [ref=e346]
+            - generic [ref=e347]: salted commitment
+          - tablist [ref=e348]:
+            - tab "⌕ Recon" [ref=e349] [cursor=pointer]:
+              - generic [ref=e350]: ⌕
+              - text: Recon
+            - tab "↗ Attack" [selected] [ref=e351] [cursor=pointer]:
+              - generic [ref=e352]: ↗
+              - text: Attack
+            - tab "◈ Defend" [ref=e353] [cursor=pointer]:
+              - generic [ref=e354]: ◈
+              - text: Defend
+            - tab "+ Build" [ref=e355] [cursor=pointer]:
+              - generic [ref=e356]: +
+              - text: Build
+            - tab "— Pass" [ref=e357] [cursor=pointer]:
+              - generic [ref=e358]: —
+              - text: Pass
+          - generic [ref=e359]:
+            - generic [ref=e360]:
+              - text: Origin
+              - combobox "Origin" [ref=e361]:
+                - option "A · yours" [selected]
+            - generic [ref=e362]:
+              - text: Target
+              - combobox "Target" [ref=e363]:
+                - option "A · yours"
+                - option "B · open" [selected]
+                - option "C · open"
+                - option "D · open"
+                - option "E · open"
+                - option "F · open"
+                - option "G · open"
+                - option "H · open"
+                - option "I · open"
+                - option "J · open"
+                - option "K · open"
+                - option "L · open"
+                - option "M · open"
+                - option "N · open"
+                - option "O · opponent"
+            - generic [ref=e364]:
+              - text: Troops
+              - spinbutton "Troops" [ref=e365]: "2"
+          - generic [ref=e366]:
+            - generic [ref=e367]:
+              - generic [ref=e368]: ↗
+              - generic [ref=e369]: Attack from A to B
+            - button "Seal commitment ↗" [active] [ref=e409] [cursor=pointer]
+        - generic [ref=e371]:
+          - generic [ref=e372]:
+            - generic [ref=e373]:
+              - paragraph [ref=e374]: Public record
+              - heading "Match log" [level=2] [ref=e375]
+            - generic [ref=e376]: recording
+          - generic [ref=e378]:
+            - generic [ref=e410]:
+              - generic [ref=e412]: "Round 1: moves resolved without a capture"
+              - time [ref=e413]: now
+            - generic [ref=e414]:
+              - generic [ref=e416]: Private state updated locally for this rehearsal
+              - time [ref=e417]: 1r ago
+            - generic [ref=e418]:
+              - generic [ref=e420]: "Round 1: commitment sealed"
+              - time [ref=e421]: 2r ago
+            - generic [ref=e422]:
+              - generic [ref=e424]: Match created
+              - time [ref=e425]: 3r ago
+            - generic [ref=e426]:
+              - generic [ref=e428]: Your private state is ready
+              - time [ref=e429]: 4r ago
+          - generic [ref=e387]:
+            - generic [ref=e388]: ✓
+            - paragraph [ref=e389]: Privacy verifiedOnly public outcomes are recorded. Your hidden state stays with your wallet.
+    - contentinfo [ref=e390]:
+      - generic [ref=e391]: ShadowArena protocol
+      - generic [ref=e392]: Private strategy, publicly verifiable.
+      - link "Midnight docs ↗" [ref=e393] [cursor=pointer]:
+        - /url: https://docs.midnight.network

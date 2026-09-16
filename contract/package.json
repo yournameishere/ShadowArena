@@ -1,0 +1,32 @@
+{
+  "name": "@shadowarena/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json && node ./scripts/copy-compiled.mjs",
+    "compact": "node ./scripts/compile-compact.mjs",
+    "test": "vitest run src/test --pool=forks",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/midnight-js-compact": "4.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

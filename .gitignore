@@ -1,0 +1,12 @@
+node_modules/
+dist/
+contract/src/managed/
+contract/dist/
+ui/dist/
+.env
+.env.*
+!.env.example
+!ui/.env.example
+*.log
+
+.vercel

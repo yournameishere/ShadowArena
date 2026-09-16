@@ -1,0 +1,40 @@
+- generic [ref=f2e1]:
+  - link "Skip to content" [ref=f2e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f2e4]:
+    - banner [ref=f2e5]:
+      - link "ShadowArena home" [ref=f2e6] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=f2e7]: ◒
+        - generic [ref=f2e8]: ShadowArena
+      - navigation "Primary navigation" [ref=f2e9]:
+        - button "Battle room" [ref=f2e10] [cursor=pointer]
+        - button "How it works" [active] [ref=f2e11] [cursor=pointer]
+      - generic [ref=f2e12]:
+        - generic [ref=f2e13]: preprod
+        - button "Connect wallet" [ref=f2e15] [cursor=pointer]
+    - main [ref=f2e16]:
+      - generic [ref=f2e213]:
+        - paragraph [ref=f2e214]: Protocol notes
+        - heading [level=1] [ref=f2e215]:
+          - text: Fair play, without
+          - emphasis [ref=f2e216]: the open hand.
+        - generic [ref=f2e217]:
+          - article [ref=f2e218]:
+            - text: "01"
+            - heading "Commit privately" [level=2] [ref=f2e219]
+            - paragraph [ref=f2e220]: Your action, target, card, and fresh move salt are committed before either player sees the other move.
+          - article [ref=f2e221]:
+            - text: "02"
+            - heading "Reveal with proof" [level=2] [ref=f2e222]
+            - paragraph [ref=f2e223]: The contract checks ownership, resources, card usage, adjacency, and troop limits from your private state.
+          - article [ref=f2e224]:
+            - text: "03"
+            - heading "Resolve in public" [level=2] [ref=f2e225]
+            - paragraph [ref=f2e226]: "Only the outcome becomes public: captures, losses, and the next round. Your unused hand stays hidden."
+        - button "Back to battle room ↗" [ref=f2e227] [cursor=pointer]
+    - contentinfo [ref=f2e172]:
+      - generic [ref=f2e173]: ShadowArena protocol
+      - generic [ref=f2e174]: Private strategy, publicly verifiable.
+      - link "Midnight docs ↗" [ref=f2e175] [cursor=pointer]:
+        - /url: https://docs.midnight.network

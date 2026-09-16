@@ -1,0 +1,32 @@
+name: ShadowArena CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Compact toolchain
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          if [ -x "$HOME/.local/bin/compact" ]; then
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            "$HOME/.local/bin/compact" update 0.31.1
+            "$HOME/.local/bin/compact" compile --version
+          else
+            echo "$HOME/.compact/bin" >> "$GITHUB_PATH"
+            "$HOME/.compact/bin/compact" update 0.31.1
+            "$HOME/.compact/bin/compact" compile --version
+          fi
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build

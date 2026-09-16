@@ -1,0 +1,518 @@
+// ShadowArena — privacy-first, two-player tactical battle for Midnight
+//
+// All game state lives on-chain.  Each player's hidden information
+// (resources, troops, cards) never leaves their machine: it is bound to the
+// ledger through a state commitment (persistentCommit) that every move must
+// prove ownership of and consistently update.  Secret moves are committed
+// with a salted commitment and only revealed in the reveal phase, preventing
+// last-second strategy changes.
+//
+// Board: 15 territories in a 3x5 grid.
+//   row 0: 0 1 2 3 4      (Player A base = 0)
+//   row 1: 5 6 7 8 9
+//   row 2: 10 11 12 13 14 (Player B base = 14)
+
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ─── Public types ─────────────────────────────────────────────────────────
+
+export enum MatchStatus {
+  CREATED,
+  COMMIT_PHASE,
+  REVEAL_PHASE,
+  COMPLETE
+}
+
+export enum Action {
+  RECON,
+  ATTACK,
+  DEFEND,
+  BUILD,
+  PASS
+}
+
+export enum Owner {
+  NEUTRAL,
+  A,
+  B
+}
+
+// A move as committed secretly and later revealed publicly.
+// `card` is the card TYPE used (0..7) — the played card becomes public,
+// the rest of the hand stays hidden.
+export struct RevealedMove {
+  action: Action,
+  origin: Uint<8>,
+  territory: Uint<8>,
+  troops: Uint<32>,
+  card: Maybe<Uint<8>>
+}
+
+// The hidden per-player state that is bound to the ledger via commitment.
+export struct StateVal {
+  resources: Uint<64>,
+  troops: Uint<32>,
+  usedMask: Uint<8>,
+  cards: Vector<3, Uint<8>>
+}
+
+// ─── Ledger (all on-chain, fully public) ──────────────────────────────────
+
+export ledger status: MatchStatus;
+export ledger round: Uint<32>;
+export ledger playerA: Maybe<Bytes<32>>;
+export ledger playerB: Maybe<Bytes<32>>;
+export ledger stateA: Maybe<Bytes<32>>;
+export ledger stateB: Maybe<Bytes<32>>;
+export ledger commitA: Maybe<Bytes<32>>;
+export ledger commitB: Maybe<Bytes<32>>;
+export ledger moveA: Maybe<RevealedMove>;
+export ledger moveB: Maybe<RevealedMove>;
+export ledger pendingLossA: Uint<32>;
+export ledger pendingLossB: Uint<32>;
+export ledger territories: Map<Uint<8>, Owner>;
+export ledger winner: Maybe<Bytes<32>>;
+
+// ─── Game constants ───────────────────────────────────────────────────────
+
+pure circuit NUM_TERRITORIES(): Uint<8> { return 15; }
+pure circuit BASE_A(): Uint<8> { return 0; }
+pure circuit BASE_B(): Uint<8> { return 14; }
+pure circuit START_RESOURCES(): Uint<64> { return 100; }
+pure circuit START_TROOPS(): Uint<32> { return 3; }
+pure circuit COST_RECON(): Uint<64> { return 5; }
+pure circuit COST_ATTACK(): Uint<64> { return 10; }
+pure circuit COST_DEFEND(): Uint<64> { return 5; }
+pure circuit COST_BUILD(): Uint<64> { return 15; }
+pure circuit HEAL_AMOUNT(): Uint<64> { return 10; }
+pure circuit ATTACK_MIN_TROOPS(): Uint<32> { return 2; }
+pure circuit MAX_MOVE_TROOPS(): Uint<32> { return 9; }
+pure circuit WIN_TERRITORIES(): Uint<32> { return 5; }
+pure circuit LOSS_ATTACK(): Uint<32> { return 1; }
+pure circuit LOSS_COUNTER(): Uint<32> { return 2; }
+pure circuit LOSS_DEFEND(): Uint<32> { return 2; }
+pure circuit LOSS_AMBUSH(): Uint<32> { return 1; }
+
+// Card types (a player's hand of 3 is chosen secretly at match open).
+pure circuit CARD_ATTACK_BOOST(): Uint<8> { return 0; }
+pure circuit CARD_SHIELD(): Uint<8> { return 1; }
+pure circuit CARD_HEAL(): Uint<8> { return 2; }
+pure circuit CARD_AMBUSH(): Uint<8> { return 3; }
+pure circuit CARD_SPY(): Uint<8> { return 4; }
+pure circuit CARD_TELEPORT(): Uint<8> { return 5; }
+pure circuit CARD_COUNTER(): Uint<8> { return 6; }
+pure circuit CARD_RALLY(): Uint<8> { return 7; }
+pure circuit NUM_CARD_TYPES(): Uint<8> { return 8; }
+
+// ─── Witnesses (private, client-side) ─────────────────────────────────────
+
+witness mySalt(): Bytes<32>;
+witness myMoveSalt(): Bytes<32>;
+witness myCommittedMoveSalt(): Bytes<32>;
+witness myResources(): Uint<64>;
+witness myTroops(): Uint<32>;
+witness myUsedMask(): Uint<8>;
+witness myCards(): Vector<3, Uint<8>>;
+witness rotateMoveSalt(): [];
+witness updatePrivateState(resources: Uint<64>, troops: Uint<32>, usedMask: Uint<8>): [];
+
+// ─── Commitment helpers ───────────────────────────────────────────────────
+
+// Binds a player's hidden state to the ledger.
+circuit stateCommitment(resources: Uint<64>, troops: Uint<32>, usedMask: Uint<8>, cards: Vector<3, Uint<8>>, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<StateVal>(StateVal {
+    resources: resources,
+    troops: troops,
+    usedMask: usedMask,
+    cards: cards
+  }, salt);
+}
+
+// Salted commitment to a secret move (commit-and-reveal).
+circuit moveCommitment(move: RevealedMove, salt: Bytes<32>): Bytes<32> {
+  return persistentCommit<RevealedMove>(move, salt);
+}
+
+// ─── Pure game-rule helpers (no ledger, no witnesses) ─────────────────────
+
+export pure circuit adjacent(a: Uint<8>, b: Uint<8>): Boolean {
+  const sameRowNear = (a < 5 && b < 5) || (a >= 5 && a < 10 && b >= 5 && b < 10) || (a >= 10 && b >= 10);
+  const rowAdj = sameRowNear && (a + 1 == b || b + 1 == a);
+  const colAdj = a + 5 == b || b + 5 == a;
+  return rowAdj || colAdj;
+}
+
+pure circuit maskHasBit(mask: Uint<8>, slot: Uint<8>): Boolean {
+  return slot == 0 ? (mask == 1 || mask == 3 || mask == 5 || mask == 7)
+    : (slot == 1 ? (mask == 2 || mask == 3 || mask == 6 || mask == 7) : mask >= 4);
+}
+
+pure circuit maskSetBit(mask: Uint<8>, slot: Uint<8>): Uint<8> {
+  const bit = slot == 0 ? 1 : (slot == 1 ? 2 : 4);
+  return (maskHasBit(mask, slot) ? mask : mask + bit) as Uint<8>;
+}
+
+pure circuit cardTypeOf(move: RevealedMove): Uint<8> {
+  return move.card.is_some ? move.card.value : NUM_CARD_TYPES();
+}
+
+pure circuit isShielded(cardType: Uint<8>): Boolean {
+  return cardType == CARD_SHIELD() || cardType == CARD_ATTACK_BOOST();
+}
+
+// Loss suffered by the attacker when their attack is defended
+// (attacker = `a`, defender = `d`).
+pure circuit attackerLoss(a: RevealedMove, d: RevealedMove): Uint<32> {
+  const counter = cardTypeOf(d) == CARD_COUNTER() ? LOSS_COUNTER() : 0;
+  return (isShielded(cardTypeOf(a)) ? 0 : LOSS_ATTACK() + counter) as Uint<32>;
+}
+
+// Loss suffered by the defender of a contested attack.
+pure circuit defenderLoss(a: RevealedMove, d: RevealedMove): Uint<32> {
+  const ambush = cardTypeOf(a) == CARD_AMBUSH() ? LOSS_AMBUSH() : 0;
+  return (cardTypeOf(d) == CARD_SHIELD() ? 0 : LOSS_DEFEND() + ambush) as Uint<32>;
+}
+
+// True when `a`'s attack captures its target territory.
+pure circuit captureSucceeds(a: RevealedMove, d: RevealedMove): Boolean {
+  const clash = d.action == Action.ATTACK && d.territory == a.territory;
+  const defended = d.action == Action.DEFEND && d.territory == a.territory;
+  const ambushBreaks = cardTypeOf(a) == CARD_AMBUSH() && defended;
+  return a.action == Action.ATTACK && !clash && (!defended || ambushBreaks);
+}
+
+// Total troop losses for the side that played `mine` this round.
+pure circuit lossFor(mine: RevealedMove, theirs: RevealedMove): Uint<32> {
+  const theyDefendMyTarget = theirs.action == Action.DEFEND && theirs.territory == mine.territory;
+  const theyAttackMyTarget = theirs.action == Action.ATTACK && theirs.territory == mine.territory;
+  const attackLoss = mine.action == Action.ATTACK
+    ? (theyDefendMyTarget ? attackerLoss(mine, theirs)
+      : (theyAttackMyTarget ? (isShielded(cardTypeOf(mine)) ? 0 : LOSS_ATTACK()) : 0))
+    : 0;
+  const theyAttackMine = theirs.action == Action.ATTACK && mine.action == Action.DEFEND && theirs.territory == mine.territory;
+  const defenseLoss = theyAttackMine ? defenderLoss(theirs, mine) : 0;
+  return (attackLoss + defenseLoss) as Uint<32>;
+}
+
+// Resource cost of a move (Spy card makes attacks free).
+pure circuit moveCost(action: Action, cardType: Uint<8>): Uint<64> {
+  return action == Action.RECON ? COST_RECON()
+    : (action == Action.ATTACK ? (cardType == CARD_SPY() ? 0 : COST_ATTACK())
+      : (action == Action.DEFEND ? COST_DEFEND()
+        : (action == Action.BUILD ? COST_BUILD() : 0)));
+}
+
+// ─── Match lifecycle ──────────────────────────────────────────────────────
+
+constructor() {
+  status = MatchStatus.CREATED;
+  round = 0;
+  playerA = none<Bytes<32>>();
+  playerB = none<Bytes<32>>();
+  stateA = none<Bytes<32>>();
+  stateB = none<Bytes<32>>();
+  commitA = none<Bytes<32>>();
+  commitB = none<Bytes<32>>();
+  moveA = none<RevealedMove>();
+  moveB = none<RevealedMove>();
+  pendingLossA = 0;
+  pendingLossB = 0;
+  winner = none<Bytes<32>>();
+  territories.insert(0, Owner.NEUTRAL);
+  territories.insert(1, Owner.NEUTRAL);
+  territories.insert(2, Owner.NEUTRAL);
+  territories.insert(3, Owner.NEUTRAL);
+  territories.insert(4, Owner.NEUTRAL);
+  territories.insert(5, Owner.NEUTRAL);
+  territories.insert(6, Owner.NEUTRAL);
+  territories.insert(7, Owner.NEUTRAL);
+  territories.insert(8, Owner.NEUTRAL);
+  territories.insert(9, Owner.NEUTRAL);
+  territories.insert(10, Owner.NEUTRAL);
+  territories.insert(11, Owner.NEUTRAL);
+  territories.insert(12, Owner.NEUTRAL);
+  territories.insert(13, Owner.NEUTRAL);
+  territories.insert(14, Owner.NEUTRAL);
+  territories.insert(BASE_A(), Owner.A);
+  territories.insert(BASE_B(), Owner.B);
+}
+
+// Player A opens a match against a known opponent.
+export circuit createMatch(opponent: Bytes<32>): [] {
+  assert(status == MatchStatus.CREATED, "match already started");
+  playerA = disclose(some<Bytes<32>>(ownPublicKey().bytes));
+  playerB = disclose(some<Bytes<32>>(opponent));
+  assert(opponent != ownPublicKey().bytes, "cannot play yourself");
+  status = MatchStatus.COMMIT_PHASE;
+}
+
+// Each player binds their initial hidden state (100 resources, 3 troops,
+// 3 secret distinct cards) to the ledger through a commitment.
+export circuit openState(): [] {
+  assert(status == MatchStatus.COMMIT_PHASE, "match not in commit phase");
+  const caller = ownPublicKey().bytes;
+  const isA = playerA.is_some && caller == playerA.value;
+  assert(isA || (playerB.is_some && caller == playerB.value), "not a player in this match");
+  const cards = myCards();
+  assert(cards[0] < NUM_CARD_TYPES() && cards[1] < NUM_CARD_TYPES() && cards[2] < NUM_CARD_TYPES(), "bad card type");
+  assert(cards[0] != cards[1] && cards[1] != cards[2] && cards[0] != cards[2], "cards must be distinct");
+  const c = stateCommitment(START_RESOURCES(), START_TROOPS(), 0, cards, mySalt());
+  if (isA) {
+    assert(!stateA.is_some, "state already opened");
+    stateA = some<Bytes<32>>(c);
+  } else {
+    assert(!stateB.is_some, "state already opened");
+    stateB = some<Bytes<32>>(c);
+  }
+}
+
+// ─── Commit phase: secretly choose a move ─────────────────────────────────
+
+export circuit submitCommit(action: Action, originId: Uint<8>, territory: Uint<8>, troops: Uint<32>, card: Maybe<Uint<8>>): [] {
+  assert(status == MatchStatus.COMMIT_PHASE, "not in commit phase");
+  assert(originId < NUM_TERRITORIES() && territory < NUM_TERRITORIES(), "bad territory");
+  assert(troops <= MAX_MOVE_TROOPS(), "troop count out of range");
+  if (card.is_some) {
+    assert(card.value < NUM_CARD_TYPES(), "bad card type");
+  }
+  const caller = ownPublicKey().bytes;
+  const isA = playerA.is_some && caller == playerA.value;
+  assert(isA || (playerB.is_some && caller == playerB.value), "not a player in this match");
+  const commit = moveCommitment(RevealedMove {
+    action: action,
+    origin: originId,
+    territory: territory,
+    troops: troops,
+    card: card
+  }, myMoveSalt());
+  if (isA) {
+    assert(stateA.is_some, "open your state first");
+    assert(pendingLossA == 0, "settle pending losses first");
+    assert(!commitA.is_some, "already committed this round");
+    commitA = some<Bytes<32>>(commit);
+    if (commitB.is_some) {
+      status = MatchStatus.REVEAL_PHASE;
+    }
+  } else {
+    assert(stateB.is_some, "open your state first");
+    assert(pendingLossB == 0, "settle pending losses first");
+    assert(!commitB.is_some, "already committed this round");
+    commitB = some<Bytes<32>>(commit);
+    if (commitA.is_some) {
+      status = MatchStatus.REVEAL_PHASE;
+    }
+  }
+  rotateMoveSalt();
+}
+
+// ─── Reveal phase: prove & apply the secret move ──────────────────────────
+
+// Reveals a previously committed move, proves it against the caller's hidden
+// state commitment, applies private effects (resource/troop/card updates)
+// and — once both players have revealed — resolves the round on-chain.
+export circuit revealMove(action: Action, originId: Uint<8>, territory: Uint<8>, troops: Uint<32>, card: Maybe<Uint<8>>): [] {
+  assert(status == MatchStatus.REVEAL_PHASE, "not in reveal phase");
+  assert(originId < NUM_TERRITORIES() && territory < NUM_TERRITORIES(), "bad territory");
+  assert(troops <= MAX_MOVE_TROOPS(), "troop count out of range");
+  const caller = ownPublicKey().bytes;
+  const isA = playerA.is_some && caller == playerA.value;
+  assert(isA || (playerB.is_some && caller == playerB.value), "not a player in this match");
+
+  // Prove the private state matches the on-chain commitment.
+  const salt = mySalt();
+  const resources = myResources();
+  const troopsHave = myTroops();
+  const usedMask = myUsedMask();
+  const cards = myCards();
+  const myState = stateCommitment(resources, troopsHave, usedMask, cards, salt);
+  const declared = RevealedMove {
+    action: disclose(action),
+    origin: disclose(originId),
+    territory: disclose(territory),
+    troops: disclose(troops),
+    card: disclose(card)
+  };
+  const commit = moveCommitment(declared, myCommittedMoveSalt());
+  if (isA) {
+    assert(commitA.is_some && commit == commitA.value, "commitment mismatch");
+    assert(stateA.is_some && myState == stateA.value, "state commitment mismatch");
+    assert(pendingLossA == 0, "settle pending losses first");
+    assert(!moveA.is_some, "already revealed");
+  } else {
+    assert(commitB.is_some && commit == commitB.value, "commitment mismatch");
+    assert(stateB.is_some && myState == stateB.value, "state commitment mismatch");
+    assert(pendingLossB == 0, "settle pending losses first");
+    assert(!moveB.is_some, "already revealed");
+  }
+
+  // Card legality: must be an unused card from the committed hand, and only
+  // usable with the right kind of move.  The hand itself stays hidden.
+  const cardType = cardTypeOf(declared);
+  const slot = cards[0] == cardType ? 0 : (cards[1] == cardType ? 1 : 2);
+  if (card.is_some) {
+    assert(cards[0] == cardType || cards[1] == cardType || cards[2] == cardType, "card not in hand");
+    assert(!maskHasBit(usedMask, slot), "card already used");
+    if (cardType == CARD_ATTACK_BOOST() || cardType == CARD_AMBUSH() || cardType == CARD_SPY() || cardType == CARD_TELEPORT()) {
+      assert(action == Action.ATTACK, "card only usable with an attack");
+    }
+    if (cardType == CARD_COUNTER()) {
+      assert(action == Action.DEFEND, "card only usable while defending");
+    }
+  }
+
+  // Board legality.
+  const owner = isA ? Owner.A : Owner.B;
+  const publicOrigin = disclose(originId);
+  const publicTerritory = disclose(territory);
+  const fromOwned = territories.lookup(publicOrigin) == owner;
+  const target = territories.lookup(publicTerritory);
+  if (action == Action.RECON) {
+    assert(fromOwned && adjacent(publicOrigin, publicTerritory), "recon must start from your territory");
+    assert(target != owner, "recon target must not be yours");
+  } else if (action == Action.ATTACK) {
+    const teleports = cardType == CARD_TELEPORT();
+    assert(fromOwned && (teleports || adjacent(publicOrigin, publicTerritory)), "attack must start from your territory");
+    assert(target != owner, "cannot attack your own territory");
+    assert(troops >= ATTACK_MIN_TROOPS() && troops <= troopsHave, "not enough troops");
+  } else if (action == Action.DEFEND) {
+    assert(target == owner, "can only defend your own territory");
+  } else if (action == Action.BUILD) {
+    assert(target == owner, "can only build on your own territory");
+  }
+
+  // Private state update: pay the cost, apply Heal/Rally, mark card used.
+  const cost = moveCost(action, cardType);
+  assert(resources >= cost, "not enough resources");
+  const healed = cardType == CARD_HEAL() ? resources + HEAL_AMOUNT() : resources;
+  const resourcesNew = (healed - cost) as Uint<64>;
+  // BUILD creates one available troop.  RALLY is a private card effect and
+  // also creates one troop, so both effects are reflected in the commitment
+  // that is carried into the next turn.
+  const built = action == Action.BUILD ? 1 : 0;
+  const rallied = cardType == CARD_RALLY() ? 1 : 0;
+  const troopsNew = (troopsHave + built + rallied) as Uint<32>;
+  const maskNew = card.is_some ? maskSetBit(usedMask, slot) : usedMask;
+  const myStateNew = stateCommitment(resourcesNew, troopsNew, maskNew, cards, salt);
+
+  if (isA) {
+    moveA = disclose(some<RevealedMove>(declared));
+    stateA = some<Bytes<32>>(myStateNew);
+  } else {
+    moveB = disclose(some<RevealedMove>(declared));
+    stateB = some<Bytes<32>>(myStateNew);
+  }
+
+  // Once both moves are on the ledger, resolve the round.
+  if (moveA.is_some && moveB.is_some) {
+    const a = moveA.value;
+    const b = moveB.value;
+    const lossA = lossFor(a, b);
+    const lossB = lossFor(b, a);
+    const capA = captureSucceeds(a, b);
+    const capB = captureSucceeds(b, a);
+    if (capA) {
+      territories.insert(a.territory, Owner.A);
+    }
+    if (capB) {
+      territories.insert(b.territory, Owner.B);
+    }
+
+    // Apply own troop losses immediately; the opponent settles theirs.
+    const myLoss = isA ? lossA : lossB;
+    assert(troopsNew >= myLoss, "not enough troops to absorb losses");
+    const myStateFinal = stateCommitment(resourcesNew, troopsNew - myLoss, maskNew, cards, salt);
+    if (isA) {
+      stateA = some<Bytes<32>>(myStateFinal);
+      pendingLossB = lossB;
+    } else {
+      stateB = some<Bytes<32>>(myStateFinal);
+      pendingLossA = lossA;
+    }
+
+    // Victory: capture the enemy base or hold 5 territories.
+    const countA = countOwned(Owner.A);
+    const countB = countOwned(Owner.B);
+    const aWins = (capA && a.territory == BASE_B()) || countA >= WIN_TERRITORIES();
+    const bWins = (capB && b.territory == BASE_A()) || countB >= WIN_TERRITORIES();
+    if (aWins) {
+      status = MatchStatus.COMPLETE;
+      winner = playerA;
+    } else if (bWins) {
+      status = MatchStatus.COMPLETE;
+      winner = playerB;
+    } else {
+      status = MatchStatus.COMMIT_PHASE;
+      round = (round + 1) as Uint<32>;
+      commitA = none<Bytes<32>>();
+      commitB = none<Bytes<32>>();
+      moveA = none<RevealedMove>();
+      moveB = none<RevealedMove>();
+    }
+    updatePrivateState(resourcesNew, troopsNew - myLoss, maskNew);
+  } else {
+    updatePrivateState(resourcesNew, troopsNew, maskNew);
+  }
+}
+
+// Absorb troop losses set by the opponent during the previous resolution.
+export circuit settle(): [] {
+  const caller = ownPublicKey().bytes;
+  const isA = playerA.is_some && caller == playerA.value;
+  assert(isA || (playerB.is_some && caller == playerB.value), "not a player in this match");
+  assert(status != MatchStatus.CREATED && status != MatchStatus.COMPLETE, "match not running");
+  const salt = mySalt();
+  const resources = myResources();
+  const troops = myTroops();
+  const mask = myUsedMask();
+  const cards = myCards();
+  const myState = stateCommitment(resources, troops, mask, cards, salt);
+  const pending = isA ? pendingLossA : pendingLossB;
+  assert(pending > 0, "no losses to settle");
+  assert(troops >= pending, "not enough troops to absorb losses");
+  const newState = stateCommitment(resources, troops - pending, mask, cards, salt);
+  if (isA) {
+    assert(stateA.is_some && myState == stateA.value, "state commitment mismatch");
+    stateA = some<Bytes<32>>(newState);
+    pendingLossA = 0;
+  } else {
+    assert(stateB.is_some && myState == stateB.value, "state commitment mismatch");
+    stateB = some<Bytes<32>>(newState);
+    pendingLossB = 0;
+  }
+  updatePrivateState(resources, troops - pending, mask);
+}
+
+// A player can voluntarily end a stalled or unwanted match. This is an
+// explicit on-chain surrender; automatic timeouts can be layered on later
+// without changing the private-state rules.
+export circuit forfeit(): [] {
+  const caller = ownPublicKey().bytes;
+  const isA = playerA.is_some && caller == playerA.value;
+  const isB = playerB.is_some && caller == playerB.value;
+  assert(isA || isB, "not a player in this match");
+  assert(status != MatchStatus.CREATED && status != MatchStatus.COMPLETE, "match not running");
+  winner = isA ? playerB : playerA;
+  status = MatchStatus.COMPLETE;
+}
+
+// Count territories owned by a side (unrolled board scan).
+circuit countOwned(o: Owner): Uint<32> {
+  const c0 = territories.lookup(0) == o ? 1 : 0;
+  const c1 = territories.lookup(1) == o ? 1 : 0;
+  const c2 = territories.lookup(2) == o ? 1 : 0;
+  const c3 = territories.lookup(3) == o ? 1 : 0;
+  const c4 = territories.lookup(4) == o ? 1 : 0;
+  const c5 = territories.lookup(5) == o ? 1 : 0;
+  const c6 = territories.lookup(6) == o ? 1 : 0;
+  const c7 = territories.lookup(7) == o ? 1 : 0;
+  const c8 = territories.lookup(8) == o ? 1 : 0;
+  const c9 = territories.lookup(9) == o ? 1 : 0;
+  const c10 = territories.lookup(10) == o ? 1 : 0;
+  const c11 = territories.lookup(11) == o ? 1 : 0;
+  const c12 = territories.lookup(12) == o ? 1 : 0;
+  const c13 = territories.lookup(13) == o ? 1 : 0;
+  const c14 = territories.lookup(14) == o ? 1 : 0;
+  return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9 + c10 + c11 + c12 + c13 + c14;
+}

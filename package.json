@@ -1,0 +1,24 @@
+{
+  "name": "shadowarena",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": {
+    "packages": [
+      "contract",
+      "api",
+      "ui"
+    ]
+  },
+  "scripts": {
+    "compact": "npm run compact --workspace @shadowarena/contract",
+    "predev": "npm run compact && npm run build --workspace @shadowarena/contract && npm run build --workspace @shadowarena/api",
+    "pretest": "npm run compact && npm run build --workspace @shadowarena/contract",
+    "typecheck": "npm run typecheck --workspace @shadowarena/contract && npm run typecheck --workspace @shadowarena/api && npm run build --workspace @shadowarena/ui",
+    "test": "npm run test --workspace @shadowarena/api && npm run test --workspace @shadowarena/contract && npm run test --workspace @shadowarena/ui",
+    "build": "npm run compact && npm run build --workspace @shadowarena/contract && npm run build --workspace @shadowarena/api && npm run build --workspace @shadowarena/ui",
+    "dev": "npm run dev --workspace @shadowarena/ui",
+    "preview": "npm run preview --workspace @shadowarena/ui --"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,40 @@
+- generic [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=e227]:
+    - banner [ref=e228]:
+      - link "ShadowArena home" [ref=e229] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=e230]: ◒
+        - generic [ref=e231]: ShadowArena
+      - navigation "Primary navigation" [ref=e434]:
+        - button "Battle room" [ref=e435] [cursor=pointer]
+        - button "How it works" [active] [ref=e436] [cursor=pointer]
+      - generic [ref=e232]:
+        - generic [ref=e437]: preprod
+        - button "Connect wallet" [ref=e233] [cursor=pointer]
+    - main [ref=e234]:
+      - generic [ref=e439]:
+        - paragraph [ref=e440]: Protocol notes
+        - heading [level=1] [ref=e441]:
+          - text: Fair play, without
+          - emphasis [ref=e442]: the open hand.
+        - generic [ref=e443]:
+          - article [ref=e444]:
+            - text: "01"
+            - heading "Commit privately" [level=2] [ref=e445]
+            - paragraph [ref=e446]: Your action, target, card, and salt are committed before either player sees the other move.
+          - article [ref=e447]:
+            - text: "02"
+            - heading "Reveal with proof" [level=2] [ref=e448]
+            - paragraph [ref=e449]: The contract checks ownership, resources, card usage, adjacency, and troop limits from your private state.
+          - article [ref=e450]:
+            - text: "03"
+            - heading "Resolve in public" [level=2] [ref=e451]
+            - paragraph [ref=e452]: "Only the outcome becomes public: captures, losses, and the next round. Your unused hand stays hidden."
+        - button "Back to battle room ↗" [ref=e453] [cursor=pointer]
+    - contentinfo [ref=e390]:
+      - generic [ref=e391]: ShadowArena protocol
+      - generic [ref=e392]: Private strategy, publicly verifiable.
+      - link "Midnight docs ↗" [ref=e393] [cursor=pointer]:
+        - /url: https://docs.midnight.network

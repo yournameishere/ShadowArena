@@ -1,0 +1,40 @@
+- generic [active] [ref=f1e1]:
+  - link "Skip to content" [ref=f1e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f1e4]:
+    - banner [ref=f1e5]:
+      - link "ShadowArena home" [ref=f1e6] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=f1e7]: ◒
+        - generic [ref=f1e8]: ShadowArena
+      - navigation "Primary navigation" [ref=f1e9]:
+        - button "Battle room" [ref=f1e10] [cursor=pointer]
+        - button "How it works" [ref=f1e11] [cursor=pointer]
+      - generic [ref=f1e12]:
+        - generic [ref=f1e13]: preprod
+        - button "Connect wallet" [ref=f1e15] [cursor=pointer]
+    - main [ref=f1e16]:
+      - generic [ref=f1e17]:
+        - paragraph [ref=f1e18]: Protocol notes
+        - heading [level=1] [ref=f1e19]:
+          - text: Fair play, without
+          - emphasis [ref=f1e20]: the open hand.
+        - generic [ref=f1e21]:
+          - article [ref=f1e22]:
+            - text: "01"
+            - heading "Commit privately" [level=2] [ref=f1e23]
+            - paragraph [ref=f1e24]: Your action, target, card, and fresh move salt are committed before either player sees the other move.
+          - article [ref=f1e25]:
+            - text: "02"
+            - heading "Reveal with proof" [level=2] [ref=f1e26]
+            - paragraph [ref=f1e27]: The contract checks ownership, resources, card usage, adjacency, and troop limits from your private state.
+          - article [ref=f1e28]:
+            - text: "03"
+            - heading "Resolve in public" [level=2] [ref=f1e29]
+            - paragraph [ref=f1e30]: "Only the outcome becomes public: captures, losses, and the next round. Your unused hand stays hidden."
+        - button "Back to battle room ↗" [ref=f1e31] [cursor=pointer]
+    - contentinfo [ref=f1e32]:
+      - generic [ref=f1e33]: ShadowArena protocol
+      - generic [ref=f1e34]: Private strategy, publicly verifiable.
+      - link "Midnight docs ↗" [ref=f1e35] [cursor=pointer]:
+        - /url: https://docs.midnight.network

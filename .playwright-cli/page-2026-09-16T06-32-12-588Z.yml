@@ -1,0 +1,184 @@
+- generic [active] [ref=f6e1]:
+  - link "Skip to content" [ref=f6e2] [cursor=pointer]:
+    - /url: "#main"
+  - generic [ref=f6e4]:
+    - banner [ref=f6e5]:
+      - link "ShadowArena home" [ref=f6e6] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=f6e7]: ◒
+        - generic [ref=f6e8]: ShadowArena
+      - navigation "Primary navigation" [ref=f6e9]:
+        - button "Battle room" [ref=f6e10] [cursor=pointer]
+        - button "How it works" [ref=f6e11] [cursor=pointer]
+      - generic [ref=f6e12]:
+        - generic [ref=f6e13]: preprod
+        - button "Connect wallet" [ref=f6e15] [cursor=pointer]
+    - main [ref=f6e16]:
+      - generic [ref=f6e17]:
+        - generic [ref=f6e18]:
+          - paragraph [ref=f6e19]: Private strategy / rehearsal
+          - heading [level=1] [ref=f6e20]:
+            - text: Read the board.
+            - emphasis [ref=f6e21]: Keep the edge.
+          - paragraph [ref=f6e22]: Make a move your opponent cannot see. Midnight verifies the rules without exposing your hand, resources, or plan.
+        - generic [ref=f6e23]:
+          - generic [ref=f6e24]: Rehearsal mode
+          - generic [ref=f6e26]: ROUND 01
+      - generic [ref=f6e27]:
+        - generic [ref=f6e28]:
+          - generic [ref=f6e29]:
+            - generic [ref=f6e30]:
+              - paragraph [ref=f6e31]: Tactical field
+              - heading "Territories" [level=2] [ref=f6e32]
+            - generic [ref=f6e33]: You · Player A Opponent
+          - generic "Tactical territory board" [ref=f6e38]:
+            - button "A territory, yours" [pressed] [ref=f6e39] [cursor=pointer]:
+              - generic [ref=f6e40]: A
+              - generic [ref=f6e41]: HOME
+            - button "B territory, unclaimed" [pressed] [ref=f6e46] [cursor=pointer]:
+              - generic [ref=f6e47]: B
+            - button "C territory, unclaimed" [ref=f6e48] [cursor=pointer]:
+              - generic [ref=f6e49]: C
+            - button "D territory, unclaimed" [ref=f6e50] [cursor=pointer]:
+              - generic [ref=f6e51]: D
+            - button "E territory, unclaimed" [ref=f6e52] [cursor=pointer]:
+              - generic [ref=f6e53]: E
+            - button "F territory, unclaimed" [ref=f6e54] [cursor=pointer]:
+              - generic [ref=f6e55]: F
+            - button "G territory, unclaimed" [ref=f6e56] [cursor=pointer]:
+              - generic [ref=f6e57]: G
+            - button "H territory, unclaimed" [ref=f6e58] [cursor=pointer]:
+              - generic [ref=f6e59]: H
+            - button "I territory, unclaimed" [ref=f6e60] [cursor=pointer]:
+              - generic [ref=f6e61]: I
+            - button "J territory, unclaimed" [ref=f6e62] [cursor=pointer]:
+              - generic [ref=f6e63]: J
+            - button "K territory, unclaimed" [ref=f6e64] [cursor=pointer]:
+              - generic [ref=f6e65]: K
+            - button "L territory, unclaimed" [ref=f6e66] [cursor=pointer]:
+              - generic [ref=f6e67]: L
+            - button "M territory, unclaimed" [ref=f6e68] [cursor=pointer]:
+              - generic [ref=f6e69]: M
+            - button "N territory, unclaimed" [ref=f6e70] [cursor=pointer]:
+              - generic [ref=f6e71]: "N"
+            - button "O territory, opponent" [ref=f6e72] [cursor=pointer]:
+              - generic [ref=f6e73]: O
+              - generic [ref=f6e74]: BASE
+          - generic [ref=f6e79]:
+            - generic [ref=f6e80]: 1 territories held
+            - generic [ref=f6e81]: 3 × 5 GRID
+        - complementary [ref=f6e82]:
+          - generic [ref=f6e83]:
+            - generic [ref=f6e84]:
+              - generic [ref=f6e85]:
+                - paragraph [ref=f6e86]: Match status
+                - heading "Commit phase" [level=2] [ref=f6e87]
+              - generic [ref=f6e88]: "01"
+            - paragraph [ref=f6e89]: Choose a private move. Your opponent cannot see it.
+            - generic [ref=f6e93]:
+              - generic [ref=f6e94]: Commit
+              - generic [ref=f6e95]: Reveal
+              - generic [ref=f6e96]: Resolve
+          - generic [ref=f6e97]:
+            - generic [ref=f6e98]:
+              - generic [ref=f6e99]:
+                - paragraph [ref=f6e100]: Your hidden state
+                - heading "Private intel" [level=2] [ref=f6e101]
+              - generic [ref=f6e102]: ⌁ private
+            - generic [ref=f6e103]:
+              - generic [ref=f6e104]:
+                - generic [ref=f6e105]: Resources
+                - strong [ref=f6e106]: "100"
+                - text: credits
+              - generic [ref=f6e107]:
+                - generic [ref=f6e108]: Ready troops
+                - strong [ref=f6e109]: "3"
+                - text: units
+            - generic [ref=f6e110]:
+              - generic [ref=f6e111]: Your hand
+              - generic [ref=f6e112]: 3/3 ready
+            - generic [ref=f6e113]:
+              - button "4 Ambush" [ref=f6e114] [cursor=pointer]:
+                - generic [ref=f6e115]: "4"
+                - generic [ref=f6e116]: Ambush
+              - button "2 Shield" [ref=f6e117] [cursor=pointer]:
+                - generic [ref=f6e118]: "2"
+                - generic [ref=f6e119]: Shield
+              - button "5 Spy" [ref=f6e120] [cursor=pointer]:
+                - generic [ref=f6e121]: "5"
+                - generic [ref=f6e122]: Spy
+      - generic [ref=f6e123]:
+        - generic [ref=f6e124]:
+          - generic [ref=f6e125]:
+            - generic [ref=f6e126]:
+              - paragraph [ref=f6e127]: Your move
+              - heading "Write the next chapter" [level=2] [ref=f6e128]
+            - generic [ref=f6e129]: fresh salted commitment
+          - tablist "Move action" [ref=f6e130]:
+            - tab "⌕ Recon" [ref=f6e131] [cursor=pointer]:
+              - generic [ref=f6e132]: ⌕
+              - text: Recon
+            - tab "↗ Attack" [selected] [ref=f6e133] [cursor=pointer]:
+              - generic [ref=f6e134]: ↗
+              - text: Attack
+            - tab "◈ Defend" [ref=f6e135] [cursor=pointer]:
+              - generic [ref=f6e136]: ◈
+              - text: Defend
+            - tab "+ Build" [ref=f6e137] [cursor=pointer]:
+              - generic [ref=f6e138]: +
+              - text: Build
+            - tab "— Pass" [ref=f6e139] [cursor=pointer]:
+              - generic [ref=f6e140]: —
+              - text: Pass
+          - generic [ref=f6e141]:
+            - generic [ref=f6e142]:
+              - text: Origin
+              - combobox "Origin" [ref=f6e143]:
+                - option "A · yours" [selected]
+            - generic [ref=f6e144]:
+              - text: Target
+              - combobox "Target" [ref=f6e145]:
+                - option "A · yours"
+                - option "B · open" [selected]
+                - option "C · open"
+                - option "D · open"
+                - option "E · open"
+                - option "F · open"
+                - option "G · open"
+                - option "H · open"
+                - option "I · open"
+                - option "J · open"
+                - option "K · open"
+                - option "L · open"
+                - option "M · open"
+                - option "N · open"
+                - option "O · opponent"
+            - generic [ref=f6e146]:
+              - text: Troops
+              - spinbutton "Troops" [ref=f6e147]: "2"
+          - generic [ref=f6e148]:
+            - generic [ref=f6e149]:
+              - generic [ref=f6e150]: ↗
+              - generic [ref=f6e151]: Attack from A to B
+            - button "Seal commitment ↗" [ref=f6e152] [cursor=pointer]
+        - generic [ref=f6e153]:
+          - generic [ref=f6e154]:
+            - generic [ref=f6e155]:
+              - paragraph [ref=f6e156]: Rehearsal log
+              - heading "Match log" [level=2] [ref=f6e157]
+            - generic [ref=f6e158]: local
+          - generic [ref=f6e160]:
+            - generic [ref=f6e161]:
+              - generic [ref=f6e163]: Match created
+              - time [ref=f6e164]: now
+            - generic [ref=f6e165]:
+              - generic [ref=f6e167]: Your private state is ready
+              - time [ref=f6e168]: 1r ago
+          - generic [ref=f6e169]:
+            - generic [ref=f6e170]: ◌
+            - paragraph [ref=f6e171]: Rehearsal onlyThis local rehearsal does not submit transactions or claim on-chain privacy.
+    - contentinfo [ref=f6e172]:
+      - generic [ref=f6e173]: ShadowArena protocol
+      - generic [ref=f6e174]: Private strategy, publicly verifiable.
+      - link "Midnight docs ↗" [ref=f6e175] [cursor=pointer]:
+        - /url: https://docs.midnight.network
