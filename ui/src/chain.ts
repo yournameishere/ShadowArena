@@ -20,6 +20,13 @@ export type ConnectedWallet = {
   readonly match?: ShadowArenaLiveAPI;
 };
 
+export type WalletSession = {
+  readonly api: ConnectedAPI;
+  readonly address: string;
+  readonly networkId: keyof typeof NETWORKS;
+  readonly config: Awaited<ReturnType<ConnectedAPI['getConfiguration']>>;
+};
+
 export type ShadowArenaBackup = {
   readonly format: 'shadowarena-backup';
   readonly version: 1;
@@ -30,12 +37,37 @@ export type ShadowArenaBackup = {
   readonly signingKeys?: SigningKeyExport;
 };
 
-const walletFromWindow = (): InitialAPI | undefined => {
+export type WalletOption = {
+  readonly id: string;
+  readonly rdns: string;
+  readonly name: string;
+  readonly icon: string;
+  readonly apiVersion: string;
+};
+
+const walletEntries = (): readonly (readonly [string, InitialAPI])[] => {
   const midnight = (window as Window & { midnight?: Record<string, InitialAPI> }).midnight;
-  if (!midnight) return undefined;
-  return Object.values(midnight).find((wallet) =>
+  if (!midnight) return [];
+  return Object.entries(midnight).filter(([, wallet]) =>
     !!wallet && typeof wallet === 'object' && satisfies(wallet.apiVersion, '>=4.0.0 <5.0.0'),
   );
+};
+
+export const discoverWallets = (): readonly WalletOption[] => walletEntries().map(([id, wallet]) => ({
+  id,
+  rdns: wallet.rdns,
+  name: wallet.name,
+  icon: wallet.icon,
+  apiVersion: wallet.apiVersion,
+}));
+
+const walletFromWindow = (walletId?: string): InitialAPI | undefined => {
+  const entries = walletEntries();
+  if (walletId) {
+    const selected = entries.find(([id, wallet]) => id === walletId || wallet.rdns === walletId || wallet.name === walletId);
+    if (selected) return selected[1];
+  }
+  return entries.find(([id, wallet]) => id === 'mnLace' || wallet.name.toLowerCase().includes('lace'))?.[1] ?? entries[0]?.[1];
 };
 
 const walletProvider = (connected: ConnectedAPI): MidnightProvider & WalletProvider => {
@@ -55,23 +87,28 @@ const walletProvider = (connected: ConnectedAPI): MidnightProvider & WalletProvi
   } as MidnightProvider & WalletProvider;
 };
 
-export const connectToMidnight = async (
-  networkId: string,
-  contractAddress?: string,
-  cards: [bigint, bigint, bigint] = [3n, 1n, 4n],
-  privateStoragePassword?: string,
-): Promise<ConnectedWallet> => {
+export const connectToMidnightWallet = async (networkId: string, walletId?: string): Promise<WalletSession> => {
   const selectedNetwork = resolveNetwork(networkId);
   const midnightNetworkId = NETWORKS[selectedNetwork].networkId;
   setNetworkId(midnightNetworkId);
-  const initial = walletFromWindow();
-  if (!initial) throw new Error('A compatible Lace wallet (DApp Connector API 4.x) was not detected. Install or update Lace, or continue in rehearsal mode.');
+  const initial = walletFromWindow(walletId);
+  if (!initial) throw new Error('No compatible Lace or 1AM wallet was detected. Install one of the supported wallets, then try again.');
   const api = await initial.connect(midnightNetworkId);
   const addressResult = await api.getUnshieldedAddress();
   const config = await api.getConfiguration();
   if (config.networkId !== midnightNetworkId) {
-    throw new Error(`Wallet connected to ${config.networkId}, but this app is configured for ${midnightNetworkId}. Switch networks in Lace and reconnect.`);
+    throw new Error(`Wallet connected to ${config.networkId}, but this app is configured for ${midnightNetworkId}. Switch networks in the wallet and reconnect.`);
   }
+  return { api, address: addressResult.unshieldedAddress, networkId: selectedNetwork, config };
+};
+
+export const initializeMidnightWallet = async (
+  session: WalletSession,
+  contractAddress?: string,
+  cards: [bigint, bigint, bigint] = [3n, 1n, 4n],
+  privateStoragePassword?: string,
+): Promise<ConnectedWallet> => {
+  const { api, address, networkId: selectedNetwork, config } = session;
   const storagePassword = privateStoragePassword?.trim();
   if (!storagePassword || storagePassword.length < 16) {
     throw new Error('A private-state password of at least 16 characters is required. It is never stored by this app; use the same password to reconnect this wallet.');
@@ -79,7 +116,7 @@ export const connectToMidnight = async (
   const zk = new FetchZkConfigProvider<any>(window.location.origin, fetch.bind(window));
   const provider = walletProvider(api) as any;
   await provider.__load();
-  const accountId = addressResult.unshieldedAddress;
+  const accountId = address;
   const providers: ShadowArenaProviders = {
     privateStateProvider: levelPrivateStateProvider({
       accountId,
@@ -100,8 +137,20 @@ export const connectToMidnight = async (
   const match = contractAddress
     ? await ShadowArenaLiveAPI.join(providers, contractAddress as ContractAddress, cards)
     : undefined;
-  return { api, address: addressResult.unshieldedAddress, networkId: selectedNetwork, providers, match };
+  return { api, address, networkId: selectedNetwork, providers, match };
 };
+
+export const connectToMidnight = async (
+  networkId: string,
+  contractAddress?: string,
+  cards: [bigint, bigint, bigint] = [3n, 1n, 4n],
+  privateStoragePassword?: string,
+): Promise<ConnectedWallet> => initializeMidnightWallet(
+  await connectToMidnightWallet(networkId),
+  contractAddress,
+  cards,
+  privateStoragePassword,
+);
 
 export const deployLiveMatch = async (
   wallet: ConnectedWallet,
