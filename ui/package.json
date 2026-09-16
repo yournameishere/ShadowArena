@@ -23,6 +23,7 @@
     "@shadowarena/api": "*",
     "@shadowarena/contract": "*",
     "assert": "^2.1.0",
+    "buffer": "^6.0.3",
     "events": "^3.3.0",
     "fp-ts": "^2.16.11",
     "react": "^19.0.0",
