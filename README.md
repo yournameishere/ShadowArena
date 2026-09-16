@@ -5,7 +5,7 @@ ShadowArena is a two-player tactical battle that demonstrates Midnight's privacy
 The app has two deliberately separate modes:
 
 - Rehearsal mode is instant, local, and safe for demos. It never submits a transaction.
-- Live mode connects Lace to Midnight, generates proofs through the configured local proof server, and syncs public state from the selected network's indexer.
+- Live mode connects Lace or 1AM to Midnight, generates proofs through the supported proving path, and syncs public state from the selected network's indexer.
 
 ## What is shipped
 
@@ -49,7 +49,7 @@ This is not a server-side game with a hidden authoritative database. Rehearsal m
 - Node.js 22 or newer
 - npm 10 or newer
 - Compact 0.31.1, installed in WSL on Windows or available on PATH on Linux/macOS
-- Lace with DApp Connector API 4.x for live mode
+- Lace or 1AM with DApp Connector API 4.x for live mode
 - Docker Desktop and the Midnight local stack for local transaction-level E2E tests
 - a local Midnight proof server for remote Preprod/Preview/Mainnet transactions
 
@@ -91,7 +91,7 @@ Start the proof server separately:
 
     docker run --rm -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 
-Then run npm run dev, connect Lace on the same network, and enter a private-state password of at least 16 characters. The password is never stored by ShadowArena; use the same password when reconnecting the same account. Fund the wallet with Preprod tNIGHT and tDUST using the official [Preprod faucet](https://midnight-tmnight-preprod.nethermind.dev/).
+Then run npm run dev, connect Lace or 1AM on the same network, and enter a private-state password of at least 16 characters. The password is never stored by ShadowArena; use the same password when reconnecting the same account. Lace uses the local proof server; 1AM can prove in the browser when its connector exposes that capability. Fund the wallet with Preprod tNIGHT and tDUST using the official [Preprod faucet](https://midnight-tmnight-preprod.nethermind.dev/).
 
 The app uses the official endpoints from Midnight's [network and environment guide](https://docs.midnight.network/guides/networks-and-environments):
 
@@ -121,11 +121,11 @@ After authenticating with the Vercel CLI:
     vercel env add VITE_OPPONENT_PUBLIC_KEY production
     vercel --prod
 
-VITE_CONTRACT_ADDRESS and VITE_OPPONENT_PUBLIC_KEY are client-visible configuration, not secrets. Never place a wallet seed, mnemonic, private-state password, proof-server credential, or signing key in Vercel environment variables or this repository. A public deployment can run rehearsal mode without a contract address; live mode still requires Lace and a proof server reachable from the user's browser.
+VITE_CONTRACT_ADDRESS and VITE_OPPONENT_PUBLIC_KEY are client-visible configuration, not secrets. Never place a wallet seed, mnemonic, private-state password, proof-server credential, or signing key in Vercel environment variables or this repository. A public deployment can run rehearsal mode without a contract address; live mode supports Lace and 1AM, with Lace requiring a proof server reachable from the user's browser.
 
 ## Contract deployment boundary
 
-ShadowArena can deploy a contract from the connected Lace wallet through the live UI. This repository does not contain a funded deployment wallet, a seed, or a Preprod contract address, so no fake address is committed and no transaction is run automatically during build or deployment. A real on-chain deployment requires the operator to connect a funded wallet, run the local proof server, and approve the transactions in Lace.
+ShadowArena can deploy a contract from the connected Lace or 1AM wallet through the live UI. This repository does not contain a funded deployment wallet, a seed, or a Preprod contract address, so no fake address is committed and no transaction is run automatically during build or deployment. A real on-chain deployment requires the operator to connect a funded wallet, run the required proving path, and approve the transactions in the selected wallet.
 
 ## Scope and next improvements
 
@@ -139,4 +139,3 @@ The safest next additions are a match registry/invitation flow, explicit block-h
 - Run a proof server you control when privacy and availability matter.
 - Treat contract addresses and public transaction IDs as public data.
 - Review and test Compact changes before deploying a new contract; existing contracts are not upgraded by rebuilding the frontend.
-
