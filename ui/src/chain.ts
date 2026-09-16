@@ -2,7 +2,7 @@ import type { ConnectedAPI, InitialAPI } from '@midnight-ntwrk/dapp-connector-ap
 import { satisfies } from 'semver';
 import { fromHex, fromHex as decodeHex, toHex } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { Binding, FinalizedTransaction, Proof, SignatureEnabled, Transaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { MidnightProvider, UnboundTransaction, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProvider, type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
@@ -117,6 +117,9 @@ export const initializeMidnightWallet = async (
   const provider = walletProvider(api) as any;
   await provider.__load();
   const accountId = address;
+  const proofProvider = typeof api.getProvingProvider === 'function'
+    ? createProofProvider(await api.getProvingProvider(zk.asKeyMaterialProvider()))
+    : httpClientProofProvider(config.proverServerUri?.trim() || NETWORKS[selectedNetwork].proofServer, zk);
   const providers: ShadowArenaProviders = {
     privateStateProvider: levelPrivateStateProvider({
       accountId,
@@ -127,7 +130,7 @@ export const initializeMidnightWallet = async (
     }) as any,
     publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri, window.WebSocket),
     zkConfigProvider: zk,
-    proofProvider: httpClientProofProvider(config.proverServerUri?.trim() || NETWORKS[selectedNetwork].proofServer, zk),
+    proofProvider,
     walletProvider: provider,
     midnightProvider: provider,
   };
