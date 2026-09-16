@@ -10,7 +10,7 @@ import {
 } from '@shadowarena/api/game';
 import type { ShadowArenaPrivateState } from '@shadowarena/contract';
 import { fromHex } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ConnectedWallet, ShadowArenaBackup } from './chain';
+import type { ConnectedWallet, ShadowArenaBackup, WalletOption, WalletSession } from './chain';
 import { ShadowArenaSimulator, actionLabel, type SimulationState } from './simulator';
 import { applyLiveSnapshot } from './live-state';
 import './styles.css';
@@ -48,6 +48,10 @@ export default function App() {
   const [troops, setTroops] = useState(2);
   const [card, setCard] = useState<CardType | undefined>();
   const [wallet, setWallet] = useState<ConnectedWallet | undefined>();
+  const [walletSession, setWalletSession] = useState<WalletSession | undefined>();
+  const [walletOptions, setWalletOptions] = useState<readonly WalletOption[]>([]);
+  const [selectedWalletId, setSelectedWalletId] = useState('');
+  const [privateStoragePassword, setPrivateStoragePassword] = useState('');
   const [walletBusy, setWalletBusy] = useState(false);
   const [txBusy, setTxBusy] = useState(false);
   const [playerSide, setPlayerSide] = useState<PlayerSide>('A');
@@ -189,20 +193,55 @@ export default function App() {
     setState(simulator.current.reset());
   };
 
-  const connect = async () => {
+  const connectWithWallet = async (walletId?: string) => {
     setWalletBusy(true);
     setNotice(undefined);
     try {
-      const { connectToMidnight, findWalletInstalled } = await import('./chain.js');
-      if (!findWalletInstalled()) throw new Error('Lace was not detected. Install the Midnight wallet or stay in rehearsal mode.');
-      const privateStoragePassword = window.prompt('Create or enter your ShadowArena private-state password (16+ characters). It is not stored by this app.');
-      if (!privateStoragePassword) throw new Error('A private-state password is required for live mode.');
-      const connected = await connectToMidnight(networkId, contractAddress || undefined, [3n, 1n, 4n], privateStoragePassword);
-      setWallet(connected);
-      setNotice(connected.match ? 'Connected to the live match.' : 'Wallet connected. Set VITE_CONTRACT_ADDRESS to join a live match.');
+      const { connectToMidnightWallet, discoverWallets } = await import('./chain.js');
+      const available = discoverWallets();
+      if (!available.length) throw new Error('Install Lace or 1AM, then refresh this page to connect a Midnight wallet.');
+      if (!walletId && available.length > 1) {
+        setWalletOptions(available);
+        setSelectedWalletId(available[0].id);
+        setNotice('Choose a wallet to continue.');
+        return;
+      }
+      const session = await connectToMidnightWallet(networkId, walletId ?? available[0].id);
+      setWalletSession(session);
+      setWalletOptions([]);
+      setNotice(`${session.config.networkId} wallet connected. Add a private-state password to continue.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Wallet connection failed.');
     } finally { setWalletBusy(false); }
+  };
+
+  const connect = () => void connectWithWallet();
+
+  const finishWalletSetup = async () => {
+    if (!walletSession || walletBusy) return;
+    if (privateStoragePassword.trim().length < 16) {
+      setNotice('Use a private-state password with at least 16 characters.');
+      return;
+    }
+    setWalletBusy(true);
+    setNotice('Preparing your encrypted private state…');
+    try {
+      const { initializeMidnightWallet } = await import('./chain.js');
+      const connected = await initializeMidnightWallet(walletSession, contractAddress || undefined, [3n, 1n, 4n], privateStoragePassword);
+      setWallet(connected);
+      setWalletSession(undefined);
+      setPrivateStoragePassword('');
+      setNotice(connected.match ? 'Connected to the live match.' : 'Wallet ready. Deploy a contract to start a live match.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Wallet setup failed.');
+    } finally { setWalletBusy(false); }
+  };
+
+  const cancelWalletSetup = () => {
+    setWalletSession(undefined);
+    setWalletOptions([]);
+    setPrivateStoragePassword('');
+    setNotice('Wallet setup cancelled. Rehearsal mode is still available.');
   };
 
   const deploy = async () => {
