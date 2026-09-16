@@ -65,6 +65,16 @@ h2 { margin-bottom: 0; font-size: 1rem; letter-spacing: -.03em; font-weight: 600
 .settle-button { margin: 0 1.35rem 1rem; padding: .55rem .7rem; border: 1px solid rgba(227,176,122,.42); color: var(--accent); background: rgba(227,176,122,.07); font-size: .66rem; text-align: left; }
 .forfeit-button { margin: 0 1.35rem 1rem; border: 0; padding: .35rem 0; color: var(--red); background: transparent; font-size: .62rem; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .forfeit-button:disabled { opacity: .55; cursor: wait; }
+.connect-card, .wallet-picker, .wallet-setup { display: grid; gap: .8rem; margin: 0 1.35rem 1rem; padding: .85rem; border: 1px solid rgba(227,176,122,.24); background: rgba(227,176,122,.055); }
+.connect-card p, .wallet-setup p { margin: 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
+.wallet-options { display: grid; gap: .45rem; }
+.wallet-option { display: grid; gap: .2rem; padding: .65rem .7rem; border: 1px solid var(--line); color: var(--paper); background: rgba(255,255,255,.035); text-align: left; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.wallet-option:hover:not(:disabled) { border-color: var(--accent); background: rgba(227,176,122,.08); transform: translateY(-1px); }
+.wallet-option small { color: var(--muted); font-size: .6rem; }
+.password-field { display: grid; gap: .4rem; color: var(--muted); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; }
+.password-field input { border: 1px solid var(--line); padding: .65rem .7rem; color: var(--paper); background: #11151a; font-size: .72rem; }
+.setup-actions { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+.setup-actions .secondary-button { padding-inline: .75rem; }
 .deploy-card { display: grid; gap: .8rem; margin: 0 1.35rem 1rem; padding: .85rem; border: 1px solid rgba(227,176,122,.24); background: rgba(227,176,122,.055); }
 .deploy-card p { margin: 0; color: var(--muted); font-size: .65rem; line-height: 1.45; }
 .deploy-card .primary-button { width: 100%; }
