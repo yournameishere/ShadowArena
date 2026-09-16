@@ -91,7 +91,7 @@ Start the proof server separately:
 
     docker run --rm -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 
-Then run npm run dev, connect Lace or 1AM on the same network, and enter a private-state password of at least 16 characters. The password is never stored by ShadowArena; use the same password when reconnecting the same account. Lace uses the local proof server; 1AM can prove in the browser when its connector exposes that capability. Fund the wallet with Preprod tNIGHT and tDUST using the official [Preprod faucet](https://midnight-tmnight-preprod.nethermind.dev/).
+Then run npm run dev and connect Lace or 1AM on the same network. ShadowArena generates a strong browser-local unlock key automatically so the user can go straight to Deploy contract; it is never sent to ShadowArena. Download an encrypted backup before clearing browser data or moving devices. Lace uses the local proof server; 1AM can prove in the browser when its connector exposes that capability. Fund the wallet with Preprod tNIGHT and tDUST using the official [Preprod faucet](https://midnight-tmnight-preprod.nethermind.dev/).
 
 The app uses the official endpoints from Midnight's [network and environment guide](https://docs.midnight.network/guides/networks-and-environments):
 
@@ -105,7 +105,7 @@ Network ID and endpoints are kept together in api/src/config.ts. The app calls s
 
 ## Backups and recovery
 
-Use Download backup from the live private-intel panel before clearing browser data or moving to another device. The JSON is encrypted by the Midnight provider; keep the file and its password separately. Restore is restricted to the same network and contract address, and imports both private states and signing keys with overwrite semantics.
+Use Download backup from the live private-intel panel before clearing browser data or moving to another device. The JSON is encrypted by the Midnight provider. The default unlock key is held in this browser's local storage so reconnecting is direct; treat the browser profile as sensitive and keep the encrypted backup separately. Restore is restricted to the same network and contract address, and imports both private states and signing keys with overwrite semantics.
 
 If a wallet reconnects to a contract whose private state is missing, the app stops with a recovery message instead of silently creating a new state that cannot prove the old commitments. This is intentional: the Level provider is encrypted storage, not a recovery service.
 

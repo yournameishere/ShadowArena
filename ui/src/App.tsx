@@ -10,7 +10,7 @@ import {
 } from '@shadowarena/api/game';
 import type { ShadowArenaPrivateState } from '@shadowarena/contract';
 import { fromHex } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ConnectedWallet, ShadowArenaBackup, WalletOption, WalletSession } from './chain';
+import type { ConnectedWallet, ShadowArenaBackup, WalletOption } from './chain';
 import { ShadowArenaSimulator, actionLabel, type SimulationState } from './simulator';
 import { applyLiveSnapshot } from './live-state';
 import './styles.css';
@@ -39,6 +39,22 @@ const privateStateView = (privateState: ShadowArenaPrivateState) => {
   return { hand, usedCards, resources: Number(privateState.resources), troops: Number(privateState.troops) };
 };
 
+const browserUnlockKey = (network: string, address: string): string => {
+  const storageKey = `shadowarena-unlock-${network}-${address}`;
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing) return existing;
+  } catch {
+    // Private browsing modes can deny localStorage; the generated key still
+    // protects this session, while backup remains available after connecting.
+  }
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const generated = window.btoa(String.fromCharCode(...bytes));
+  try { window.localStorage.setItem(storageKey, generated); } catch { /* session-only fallback */ }
+  return generated;
+};
+
 export default function App() {
   const simulator = useRef(new ShadowArenaSimulator());
   const [state, setState] = useState<SimulationState>(simulator.current.state);
@@ -48,10 +64,7 @@ export default function App() {
   const [troops, setTroops] = useState(2);
   const [card, setCard] = useState<CardType | undefined>();
   const [wallet, setWallet] = useState<ConnectedWallet | undefined>();
-  const [walletSession, setWalletSession] = useState<WalletSession | undefined>();
   const [walletOptions, setWalletOptions] = useState<readonly WalletOption[]>([]);
-  const [selectedWalletId, setSelectedWalletId] = useState('');
-  const [privateStoragePassword, setPrivateStoragePassword] = useState('');
   const [walletBusy, setWalletBusy] = useState(false);
   const [txBusy, setTxBusy] = useState(false);
   const [playerSide, setPlayerSide] = useState<PlayerSide>('A');
@@ -197,52 +210,26 @@ export default function App() {
     setWalletBusy(true);
     setNotice(undefined);
     try {
-      const { connectToMidnightWallet, discoverWallets } = await import('./chain.js');
+      const { connectToMidnightWallet, discoverWallets, initializeMidnightWallet } = await import('./chain.js');
       const available = discoverWallets();
       if (!available.length) throw new Error('Install Lace or 1AM, then refresh this page to connect a Midnight wallet.');
       if (!walletId && available.length > 1) {
         setWalletOptions(available);
-        setSelectedWalletId(available[0].id);
         setNotice('Choose a wallet to continue.');
         return;
       }
       const session = await connectToMidnightWallet(networkId, walletId ?? available[0].id);
-      setWalletSession(session);
       setWalletOptions([]);
-      setNotice(`${session.config.networkId} wallet connected. Add a private-state password to continue.`);
+      setNotice('Wallet connected. Preparing your encrypted private state…');
+      const connected = await initializeMidnightWallet(session, contractAddress || undefined, [3n, 1n, 4n], browserUnlockKey(session.networkId, session.address));
+      setWallet(connected);
+      setNotice(connected.match ? 'Connected to the live match.' : 'Wallet ready. Deploy a contract to start a live match.');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Wallet connection failed.');
     } finally { setWalletBusy(false); }
   };
 
   const connect = () => void connectWithWallet();
-
-  const finishWalletSetup = async () => {
-    if (!walletSession || walletBusy) return;
-    if (privateStoragePassword.trim().length < 16) {
-      setNotice('Use a private-state password with at least 16 characters.');
-      return;
-    }
-    setWalletBusy(true);
-    setNotice('Preparing your encrypted private state…');
-    try {
-      const { initializeMidnightWallet } = await import('./chain.js');
-      const connected = await initializeMidnightWallet(walletSession, contractAddress || undefined, [3n, 1n, 4n], privateStoragePassword);
-      setWallet(connected);
-      setWalletSession(undefined);
-      setPrivateStoragePassword('');
-      setNotice(connected.match ? 'Connected to the live match.' : 'Wallet ready. Deploy a contract to start a live match.');
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Wallet setup failed.');
-    } finally { setWalletBusy(false); }
-  };
-
-  const cancelWalletSetup = () => {
-    setWalletSession(undefined);
-    setWalletOptions([]);
-    setPrivateStoragePassword('');
-    setNotice('Wallet setup cancelled. Rehearsal mode is still available.');
-  };
 
   const deploy = async () => {
     if (!wallet || txBusy) return;
@@ -296,7 +283,9 @@ export default function App() {
     setNotice('Preparing an encrypted private-state backup…');
     try {
       const { exportWalletBackup } = await import('./chain.js');
-      const backup = await exportWalletBackup(wallet);
+      const backupPassword = window.prompt('Create a backup password (16+ characters). Keep it separate from the downloaded JSON.');
+      if (!backupPassword) return;
+      const backup = await exportWalletBackup(wallet, backupPassword);
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -318,8 +307,10 @@ export default function App() {
     try {
       const backup = parseBackup(JSON.parse(await file.text()));
       if (!window.confirm('Restore this backup and overwrite matching local state for this contract?')) return;
+      const backupPassword = window.prompt('Enter the backup password used during export.');
+      if (!backupPassword) return;
       const { importWalletBackup } = await import('./chain.js');
-      const result = await importWalletBackup(wallet, backup);
+      const result = await importWalletBackup(wallet, backup, backupPassword);
       const privateState = await wallet.match.getPrivateState();
       if (privateState) setState((previous) => ({ ...previous, ...privateStateView(privateState) }));
       setNotice(result);
@@ -339,7 +330,7 @@ export default function App() {
         </nav>
         <div className="top-actions">
           <span className="network-pill"><span className="status-dot" />{networkId}</span>
-          {wallet?.match ? <button className="wallet-button" onClick={() => void (state.phase === 'CREATED' ? createAndOpen() : needsPrivateOpen ? openLiveState() : Promise.resolve())} disabled={txBusy || (state.phase !== 'CREATED' && !needsPrivateOpen)}>{txBusy ? 'Preparing…' : state.phase === 'CREATED' ? 'Create match' : needsPrivateOpen ? 'Open private state' : shorten(wallet.match.deployedContractAddress)}</button> : wallet ? <button className="wallet-button" onClick={() => void deploy()} disabled={txBusy}>{txBusy ? 'Deploying…' : 'Deploy contract'}</button> : walletSession ? <button className="wallet-button" onClick={() => document.getElementById('wallet-setup')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>{'Finish wallet setup'}</button> : <button className="wallet-button" onClick={connect} disabled={walletBusy}>{walletBusy ? 'Connecting…' : 'Connect Lace / 1AM'}</button>}
+          {wallet?.match ? <button className="wallet-button" onClick={() => void (state.phase === 'CREATED' ? createAndOpen() : needsPrivateOpen ? openLiveState() : Promise.resolve())} disabled={txBusy || (state.phase !== 'CREATED' && !needsPrivateOpen)}>{txBusy ? 'Preparing…' : state.phase === 'CREATED' ? 'Create match' : needsPrivateOpen ? 'Open private state' : shorten(wallet.match.deployedContractAddress)}</button> : wallet ? <button className="wallet-button" onClick={() => void deploy()} disabled={txBusy}>{txBusy ? 'Deploying…' : 'Deploy contract'}</button> : <button className="wallet-button" onClick={connect} disabled={walletBusy}>{walletBusy ? 'Connecting…' : 'Connect Lace / 1AM'}</button>}
         </div>
       </header>
 
@@ -378,7 +369,7 @@ export default function App() {
               </div>
 
               <aside className="intel-column">
-                <div className="panel status-panel"><div className="panel-head"><div><p className="eyebrow">Match status</p><h2>{phaseLabel}</h2></div><span className="phase-number">{state.phase === 'REVEAL_PHASE' ? '02' : '01'}</span></div><p className="status-message">{state.message}</p>{!wallet && !walletSession && walletOptions.length === 0 && <div className="connect-card"><div><span className="stat-label">Play live on Midnight</span><p>Connect Lace or 1AM to deploy a contract and submit real moves. Rehearsal stays available below.</p></div><button className="primary-button" onClick={connect} disabled={walletBusy}>{walletBusy ? 'Connecting…' : 'Connect wallet ↗'}</button></div>}{walletOptions.length > 0 && <div className="wallet-picker"><span className="stat-label">Choose your wallet</span><div className="wallet-options">{walletOptions.map((option) => <button key={option.id} className="wallet-option" onClick={() => void connectWithWallet(option.id)} disabled={walletBusy}><strong>{option.name}</strong><small>{option.name.toLowerCase().includes('1am') ? 'In-browser proving' : 'Works with local proof server'}</small></button>)}</div></div>}{walletSession && !wallet && <div id="wallet-setup" className="wallet-setup"><div><span className="stat-label">{walletSession.config.networkId} wallet connected</span><p>Choose a private password for your encrypted game state. It stays in this browser and is never sent to ShadowArena.</p></div><label className="password-field">Private-state password<input type="password" value={privateStoragePassword} onChange={(event) => setPrivateStoragePassword(event.target.value)} placeholder="At least 16 characters" autoComplete="new-password" /></label><div className="setup-actions"><button className="primary-button" onClick={() => void finishWalletSetup()} disabled={walletBusy}>{walletBusy ? 'Preparing…' : 'Continue to live mode ↗'}</button><button className="secondary-button" onClick={cancelWalletSetup} disabled={walletBusy}>Cancel</button></div></div>}{wallet && !wallet.match && <div className="deploy-card"><div><span className="stat-label">Wallet ready</span><p>Deploy a new ShadowArena contract to begin a live match.</p></div><button className="primary-button" onClick={() => void deploy()} disabled={txBusy}>{txBusy ? 'Deploying…' : 'Deploy contract ↗'}</button></div>}{isLive && state.phase === 'CREATED' && <label className="opponent-field">Opponent coin public key<input value={opponentKey} onChange={(event) => setOpponentKey(event.target.value)} placeholder="64 hex characters" spellCheck={false} /></label>}{state.pendingLoss > 0 && state.phase !== 'COMPLETE' && <button className="settle-button" onClick={settle} disabled={txBusy}>Settle {state.pendingLoss} pending loss{state.pendingLoss === 1 ? '' : 'es'}</button>}{isLive && state.phase !== 'CREATED' && state.phase !== 'COMPLETE' && <button className="forfeit-button" onClick={forfeit} disabled={txBusy}>Forfeit live match</button>}<div className="phase-track"><span className="phase-complete" /><span className={state.phase === 'REVEAL_PHASE' ? 'phase-current' : ''} /></div><div className="phase-labels"><span>Commit</span><span>Reveal</span><span>Resolve</span></div></div>
+                <div className="panel status-panel"><div className="panel-head"><div><p className="eyebrow">Match status</p><h2>{phaseLabel}</h2></div><span className="phase-number">{state.phase === 'REVEAL_PHASE' ? '02' : '01'}</span></div><p className="status-message">{state.message}</p>{!wallet && walletOptions.length === 0 && <div className="connect-card"><div><span className="stat-label">Play live on Midnight</span><p>Connect Lace or 1AM to deploy a contract and submit real moves. Rehearsal stays available below.</p></div><button className="primary-button" onClick={connect} disabled={walletBusy}>{walletBusy ? 'Connecting…' : 'Connect wallet ↗'}</button></div>}{walletOptions.length > 0 && <div className="wallet-picker"><span className="stat-label">Choose your wallet</span><div className="wallet-options">{walletOptions.map((option) => <button key={option.id} className="wallet-option" onClick={() => void connectWithWallet(option.id)} disabled={walletBusy}><strong>{option.name}</strong><small>{option.name.toLowerCase().includes('1am') ? 'In-browser proving' : 'Works with local proof server'}</small></button>)}</div></div>}{wallet && !wallet.match && <div className="deploy-card"><div><span className="stat-label">Wallet ready</span><p>Deploy a new ShadowArena contract to begin a live match. A browser-local unlock key protects your private state.</p></div><button className="primary-button" onClick={() => void deploy()} disabled={txBusy}>{txBusy ? 'Deploying…' : 'Deploy contract ↗'}</button></div>}{isLive && state.phase === 'CREATED' && <label className="opponent-field">Opponent coin public key<input value={opponentKey} onChange={(event) => setOpponentKey(event.target.value)} placeholder="64 hex characters" spellCheck={false} /></label>}{state.pendingLoss > 0 && state.phase !== 'COMPLETE' && <button className="settle-button" onClick={settle} disabled={txBusy}>Settle {state.pendingLoss} pending loss{state.pendingLoss === 1 ? '' : 'es'}</button>}{isLive && state.phase !== 'CREATED' && state.phase !== 'COMPLETE' && <button className="forfeit-button" onClick={forfeit} disabled={txBusy}>Forfeit live match</button>}<div className="phase-track"><span className="phase-complete" /><span className={state.phase === 'REVEAL_PHASE' ? 'phase-current' : ''} /></div><div className="phase-labels"><span>Commit</span><span>Reveal</span><span>Resolve</span></div></div>
                 <div className="panel resource-panel"><div className="panel-head"><div><p className="eyebrow">Your hidden state</p><h2>Private intel</h2></div><span className="privacy-lock">⌁ private</span></div><div className="stat-row"><div><span className="stat-label">Resources</span><strong>{state.resources}</strong><span className="stat-unit">credits</span></div><div><span className="stat-label">Ready troops</span><strong>{state.troops}</strong><span className="stat-unit">units</span></div></div><div className="card-heading"><span className="stat-label">Your hand</span><span className="mono">{availableCards.length}/3 ready</span></div><div className="hand">{state.hand.map((item) => <button key={item} className={`hand-card ${card === item ? 'picked' : ''} ${state.usedCards.includes(item) ? 'used' : ''}`} onClick={() => !state.usedCards.includes(item) && setCard(card === item ? undefined : item)} disabled={state.usedCards.includes(item)}><span className="card-symbol">{CARD_TYPES.indexOf(item) + 1}</span><span>{item}</span>{state.usedCards.includes(item) && <small>spent</small>}</button>)}</div>{isLive && <div className="backup-controls"><div><span className="stat-label">Recovery</span><p>Encrypted provider backup for this wallet and contract.</p></div><div className="backup-buttons"><button className="secondary-button" onClick={() => void downloadBackup()} disabled={txBusy}>Download backup</button><button className="secondary-button" onClick={() => backupInput.current?.click()} disabled={txBusy}>Restore backup</button><input ref={backupInput} type="file" accept="application/json,.json" onChange={(event) => void restoreBackup(event)} hidden /></div></div>}</div>
               </aside>
             </section>

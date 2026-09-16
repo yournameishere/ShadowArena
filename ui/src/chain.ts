@@ -164,16 +164,17 @@ export const deployLiveMatch = async (
   return { ...wallet, match };
 };
 
-export const exportWalletBackup = async (wallet: ConnectedWallet): Promise<ShadowArenaBackup> => {
+export const exportWalletBackup = async (wallet: ConnectedWallet, backupPassword: string): Promise<ShadowArenaBackup> => {
   if (!wallet.match) throw new Error('Deploy or join a live match before exporting a backup.');
+  if (backupPassword.trim().length < 16) throw new Error('Use a backup password with at least 16 characters.');
   const provider = wallet.providers.privateStateProvider;
   const contractAddress = String(wallet.match.deployedContractAddress);
   const privateState = await provider.get('shadowArenaPrivateState');
   const signingKey = await provider.getSigningKey(wallet.match.deployedContractAddress);
   if (!privateState && !signingKey) throw new Error('There is no private state or signing key to back up yet. Open the match first.');
   const [privateStates, signingKeys] = await Promise.all([
-    privateState ? provider.exportPrivateStates() : Promise.resolve(undefined),
-    signingKey ? provider.exportSigningKeys() : Promise.resolve(undefined),
+    privateState ? provider.exportPrivateStates({ password: backupPassword }) : Promise.resolve(undefined),
+    signingKey ? provider.exportSigningKeys({ password: backupPassword }) : Promise.resolve(undefined),
   ]);
   return {
     format: 'shadowarena-backup',
@@ -186,18 +187,19 @@ export const exportWalletBackup = async (wallet: ConnectedWallet): Promise<Shado
   };
 };
 
-export const importWalletBackup = async (wallet: ConnectedWallet, backup: ShadowArenaBackup): Promise<string> => {
+export const importWalletBackup = async (wallet: ConnectedWallet, backup: ShadowArenaBackup, backupPassword: string): Promise<string> => {
   if (!wallet.match) throw new Error('Deploy or join a live match before restoring a backup.');
   if (backup.format !== 'shadowarena-backup' || backup.version !== 1) throw new Error('Unsupported ShadowArena backup format.');
   if (backup.networkId !== wallet.networkId) throw new Error(`This backup belongs to ${backup.networkId}, not ${wallet.networkId}.`);
   if (backup.contractAddress !== String(wallet.match.deployedContractAddress)) throw new Error('This backup belongs to a different contract address.');
+  if (backupPassword.trim().length < 16) throw new Error('Use the backup password used during export.');
   const provider = wallet.providers.privateStateProvider;
   provider.setContractAddress(wallet.match.deployedContractAddress);
   const importedStates = backup.privateStates
-    ? await provider.importPrivateStates(backup.privateStates, { conflictStrategy: 'overwrite' })
+    ? await provider.importPrivateStates(backup.privateStates, { password: backupPassword, conflictStrategy: 'overwrite' })
     : undefined;
   const importedKeys = backup.signingKeys
-    ? await provider.importSigningKeys(backup.signingKeys, { conflictStrategy: 'overwrite' })
+    ? await provider.importSigningKeys(backup.signingKeys, { password: backupPassword, conflictStrategy: 'overwrite' })
     : undefined;
   return `Restored ${importedStates?.imported ?? 0} private state(s) and ${importedKeys?.imported ?? 0} signing key(s).`;
 };
