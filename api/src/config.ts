@@ -8,7 +8,17 @@ export type NetworkConfig = {
   readonly nodeWS: string;
   readonly proofServer: string;
   readonly faucet: string;
+  readonly explorer: string;
 };
+
+export const explorerTxUrl = (network: MidnightNetwork, txId?: string): string | undefined => {
+  if (network === 'local' || !txId) return undefined;
+  const hash = txId.startsWith('0x') ? txId : `0x${txId}`;
+  return `${NETWORKS[network].explorer}transactions/${hash}`;
+};
+
+export const explorerHomeUrl = (network: MidnightNetwork): string | undefined =>
+  network === 'local' ? undefined : NETWORKS[network].explorer;
 
 export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
   local: {
@@ -19,6 +29,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     nodeWS: 'ws://127.0.0.1:9944',
     proofServer: 'http://127.0.0.1:6300',
     faucet: '',
+    explorer: '',
   },
   preview: {
     networkId: 'preview',
@@ -28,6 +39,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     nodeWS: 'wss://rpc.preview.midnight.network',
     proofServer: 'http://127.0.0.1:6300',
     faucet: 'https://midnight-tmnight-preview.nethermind.dev/',
+    explorer: 'https://preview.midnightexplorer.com/',
   },
   preprod: {
     networkId: 'preprod',
@@ -37,6 +49,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     nodeWS: 'wss://rpc.preprod.midnight.network',
     proofServer: 'http://127.0.0.1:6300',
     faucet: 'https://midnight-tmnight-preprod.nethermind.dev/',
+    explorer: 'https://preprod.midnightexplorer.com/',
   },
   mainnet: {
     networkId: 'mainnet',
@@ -46,6 +59,7 @@ export const NETWORKS: Record<MidnightNetwork, NetworkConfig> = {
     nodeWS: 'wss://rpc.mainnet.midnight.network',
     proofServer: 'http://127.0.0.1:6300',
     faucet: '',
+    explorer: 'https://midnightexplorer.com/',
   },
 };
 

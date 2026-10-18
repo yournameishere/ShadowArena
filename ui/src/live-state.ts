@@ -17,14 +17,33 @@ export const applyLiveSnapshot = (previous: SimulationState, snapshot: LiveLedge
     : snapshot.yourSide === 'B'
       ? snapshot.pendingLossB
       : previous.pendingLoss;
+  const winner = snapshot.winnerSide;
+  const resultEvent = snapshot.status === 3 && snapshot.winnerSide
+    ? `Match complete · Player ${snapshot.winnerSide} won`
+    : undefined;
+  const knownSide = snapshot.yourSide && snapshot.winnerSide;
+  const message = snapshot.status === 3 && snapshot.winnerSide
+    ? knownSide
+      ? snapshot.winnerSide === snapshot.yourSide
+        ? 'Victory. The match is settled on-chain in your favour.'
+        : 'Defeat. Your opponent won this live match.'
+      : `Match complete · Player ${snapshot.winnerSide} won.`
+    : snapshot.yourSide
+      ? `Public match state synced. You are Player ${snapshot.yourSide}.`
+      : 'Public match state synced. Waiting for player assignment.';
   return {
     ...previous,
     phase,
     publicStateOpen,
     pendingLoss,
+    winner,
     round: snapshot.round || previous.round,
     board: snapshot.territories,
-    events: previous.events.includes(chainEvent) ? previous.events : [chainEvent, ...previous.events],
-    message: snapshot.yourSide ? `Public match state synced. You are Player ${snapshot.yourSide}.` : 'Public match state synced. Waiting for player assignment.',
+    events: previous.events.includes(chainEvent)
+      ? previous.events
+      : resultEvent
+        ? [resultEvent, chainEvent, ...previous.events]
+        : [chainEvent, ...previous.events],
+    message,
   };
 };

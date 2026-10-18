@@ -99,9 +99,12 @@ export class ShadowArenaSimulator {
     const nextResources = this.current.resources + healed - cost;
     const nextTroops = this.current.troops + built;
     if (nextTroops < losses) return this.withMessage('This round would leave you without enough troops to absorb the losses.');
+    const reconReport = mine.action === 'RECON'
+      ? `Recon report: ${territoryName(mine.territory)} is ${nextBoard[mine.territory] === 'A' ? 'held by you' : nextBoard[mine.territory] === 'neutral' ? 'unclaimed' : 'held by the opponent'}`
+      : undefined;
     const event = hasCapture(mine, theirs)
       ? `Round ${this.current.round}: ${territoryName(mine.territory)} captured`
-      : `Round ${this.current.round}: moves resolved without a capture`;
+      : reconReport ?? `Round ${this.current.round}: moves resolved without a capture`;
 
     this.current = {
       ...this.current,
@@ -115,7 +118,11 @@ export class ShadowArenaSimulator {
       committedMove: undefined,
       opponentMove: undefined,
       winner: won ? 'A' : undefined,
-      message: won ? 'You won the rehearsal. The base is yours.' : 'Round resolved. Choose your next private move.',
+      message: won
+        ? 'You won the rehearsal. The base is yours.'
+        : mine.action === 'RECON' && reconReport
+          ? `${reconReport}. Choose your next private move.`
+          : 'Round resolved. Choose your next private move.',
       events: [event, 'Private state updated locally for this rehearsal', ...this.current.events],
     };
     return this.current;

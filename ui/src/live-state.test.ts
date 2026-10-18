@@ -38,4 +38,49 @@ describe('live ledger state projection', () => {
     expect(next.pendingLoss).toBe(1);
     expect(next.publicStateOpen).toBe(true);
   });
+
+  it('announces the recorded winner when the live match completes', () => {
+    const previous = new ShadowArenaSimulator().state;
+    const next = applyLiveSnapshot(previous, {
+      status: 3,
+      round: 6,
+      territories: previous.board,
+      playerA: 'aa',
+      playerB: 'bb',
+      stateAOpen: true,
+      stateBOpen: true,
+      pendingLossA: 0,
+      pendingLossB: 0,
+      winner: 'aa',
+      winnerSide: 'A',
+      yourSide: 'A',
+    });
+
+    expect(next.phase).toBe('COMPLETE');
+    expect(next.winner).toBe('A');
+    expect(next.message).toContain('Victory');
+    expect(next.events[0]).toContain('Player A won');
+  });
+
+  it('projects a defeat for the losing side', () => {
+    const previous = new ShadowArenaSimulator().state;
+    const next = applyLiveSnapshot(previous, {
+      status: 3,
+      round: 6,
+      territories: previous.board,
+      playerA: 'aa',
+      playerB: 'bb',
+      stateAOpen: true,
+      stateBOpen: true,
+      pendingLossA: 0,
+      pendingLossB: 0,
+      winner: 'aa',
+      winnerSide: 'A',
+      yourSide: 'B',
+    });
+
+    expect(next.phase).toBe('COMPLETE');
+    expect(next.winner).toBe('A');
+    expect(next.message).toContain('Defeat');
+  });
 });

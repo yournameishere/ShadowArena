@@ -34,4 +34,15 @@ describe('ShadowArena rehearsal lifecycle', () => {
     expect(result.usedCards).toContain('Ambush');
     expect(result.hand).toContain('Ambush');
   });
+
+  it('reports recon results without changing the board', () => {
+    const simulator = new ShadowArenaSimulator();
+    simulator.commit({ action: 'RECON', origin: 0, territory: 5, troops: 0 });
+    const result = simulator.reveal();
+
+    expect(result.phase).toBe('COMMIT_PHASE');
+    expect(result.pendingLoss).toBe(0);
+    expect(result.events.some((event) => event.includes('Recon report'))).toBe(true);
+    expect(result.message).toContain('Recon report');
+  });
 });

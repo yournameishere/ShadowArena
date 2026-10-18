@@ -20,6 +20,7 @@ export type LiveLedgerSnapshot = {
   readonly pendingLossA: number;
   readonly pendingLossB: number;
   readonly winner?: string;
+  readonly winnerSide?: PlayerSide;
   readonly yourSide?: PlayerSide;
 };
 
@@ -40,7 +41,7 @@ const ownerName = (owner: unknown): TerritoryOwner => {
 
 const publicKeyString = (value: unknown): string => value instanceof Uint8Array ? toHex(value) : String(value);
 
-export const toLedgerSnapshot = (ledger: any): LiveLedgerSnapshot => {
+const toLedgerSnapshotInternal = (ledger: any): Omit<LiveLedgerSnapshot, 'winnerSide' | 'yourSide'> => {
   const territories: TerritoryOwner[] = Array.from({ length: 15 }, (_, id) => ownerName(ledger.territories.lookup(BigInt(id))));
   return {
     status: Number(ledger.status),
@@ -54,6 +55,18 @@ export const toLedgerSnapshot = (ledger: any): LiveLedgerSnapshot => {
     pendingLossB: Number(ledger.pendingLossB),
     winner: ledger.winner?.is_some ? publicKeyString(ledger.winner.value) : undefined,
   };
+};
+
+export const toLedgerSnapshot = (ledger: any): LiveLedgerSnapshot => {
+  const base = toLedgerSnapshotInternal(ledger);
+  const winnerSide = base.winner
+    ? base.winner === base.playerA
+      ? 'A'
+      : base.winner === base.playerB
+        ? 'B'
+        : undefined
+    : undefined;
+  return { ...base, winnerSide };
 };
 
 const sideFor = (snapshot: LiveLedgerSnapshot, coinPublicKey: unknown): PlayerSide | undefined => {

@@ -10,7 +10,7 @@ import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-p
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { PrivateStateExport, SigningKeyExport } from '@midnight-ntwrk/midnight-js-types';
-import { NETWORKS, resolveNetwork, ShadowArenaLiveAPI, type ShadowArenaProviders } from '@shadowarena/api';
+import { NETWORKS, resolveNetwork, ShadowArenaLiveAPI, explorerTxUrl, type ShadowArenaProviders } from '@shadowarena/api';
 
 export type ConnectedWallet = {
   readonly api: ConnectedAPI;
@@ -158,11 +158,31 @@ export const connectToMidnight = async (
 export const deployLiveMatch = async (
   wallet: ConnectedWallet,
   cards: [bigint, bigint, bigint] = [3n, 1n, 4n],
+  options: { readonly forceNew?: boolean } = {},
 ): Promise<ConnectedWallet> => {
-  if (wallet.match) return wallet;
+  if (wallet.match && !options.forceNew) return wallet;
   const match = await ShadowArenaLiveAPI.deploy(wallet.providers, cards);
   return { ...wallet, match };
 };
+
+export const joinLiveMatch = async (
+  wallet: ConnectedWallet,
+  address: string,
+  cards: [bigint, bigint, bigint] = [3n, 1n, 4n],
+): Promise<ConnectedWallet> => {
+  const normalized = address.trim().replace(/^0x/, '');
+  if (!/^[0-9a-fA-F]{64}$/.test(normalized)) {
+    throw new Error('A contract address is exactly 32 bytes (64 hexadecimal characters).');
+  }
+  if (wallet.match && String(wallet.match.deployedContractAddress) === normalized) {
+    return wallet;
+  }
+  const match = await ShadowArenaLiveAPI.join(wallet.providers, normalized as ContractAddress, cards);
+  return { ...wallet, match };
+};
+
+export const explorerUrlFor = (networkId: keyof typeof NETWORKS, txId?: string): string | undefined =>
+  explorerTxUrl(networkId, txId);
 
 export const exportWalletBackup = async (wallet: ConnectedWallet, backupPassword: string): Promise<ShadowArenaBackup> => {
   if (!wallet.match) throw new Error('Deploy or join a live match before exporting a backup.');

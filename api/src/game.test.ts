@@ -42,4 +42,10 @@ describe('ShadowArena rules', () => {
     expect(hasCapture(attack, defend)).toBe(true);
     expect(lossFor(attack, defend)).toBe(1 + 2);
   });
+
+  it('rejects a troop count above the per-move limit', () => {
+    const result = validateMove({ action: 'ATTACK', origin: 0, territory: 1, troops: 10 }, 'A', board, 100, 12, []);
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.reason).toContain('between 0 and 9');
+  });
 });
